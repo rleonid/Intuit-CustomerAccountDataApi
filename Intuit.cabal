@@ -48,7 +48,8 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:      Intuit
+  exposed-modules:      IntuitDriver
+                      , IntuitParse
                       , IntuitRest
 
   -- Modules included in this library but not exported.

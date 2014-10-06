@@ -10,6 +10,7 @@ module IntuitRest (
   , PasswordKey
   , UsernameKey
   , InstitutionDetails(..)
+  , UserAccountInfo(..)
   , discoverAndAddAccounts
   , getAccount
   , getAccountTransactions

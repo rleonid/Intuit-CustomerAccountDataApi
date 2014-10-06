@@ -1,4 +1,4 @@
-module Intuit (
+module IntuitParse (
   ppXmlToFile
   , xmlFromFile
   , xmlFromString
