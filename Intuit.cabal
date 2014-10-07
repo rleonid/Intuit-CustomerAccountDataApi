@@ -80,6 +80,7 @@ library
                , authenticate-oauth       >=1.5   && <1.6
                , interpolatedstring-perl6 >=0.9   && <1.0
                , hxt                      >=9.3   && <9.4
+               , regex-compat             >=0.9   && <1.0
 
   -- Directories containing source files.
   -- hs-source-dirs:

@@ -12,8 +12,11 @@ module IntuitRest (
   , InstitutionDetails(..)
   , UserAccountInfo(..)
   , discoverAndAddAccounts
+  , updateInstitutionLogin
   , getAccount
   , getAccountTransactions
+  , getCustomerAccounts
+  , deleteCustomer
   ) where
 
 import Control.Monad (liftM)
@@ -123,20 +126,24 @@ setupOauth ((IC okey osecret _ _), (AT t s)) = (credential, oauthApp)
                                , oauthConsumerSecret  = LB.toStrict osecret
                                }
 
--- measured in microseconds
+-- measured in microseconds = 2 minutes
 maxTimeOut :: Int
-maxTimeOut = 60 * (10^(6 :: Integer))     -- Haskell default casting
+maxTimeOut = 120 * (10^(6 :: Integer))     -- Haskell default casting
 
 type ResourceName = String
 
-getRequest :: ResourceName -> Credentials -> Manager -> IO ByteString
-getRequest resourceName credentials manager = do 
+makeRequest :: String -> ResourceName -> Credentials -> Manager -> IO ByteString
+makeRequest methodStr resourceName credentials manager = do 
   request <- parseUrl $ baseUrl ++ resourceName
-  let reqTime = request { responseTimeout = Just maxTimeOut }
+  let reqTime = request { method = B.pack methodStr
+                        , responseTimeout = Just maxTimeOut }
       (cred, oaApp) = setupOauth credentials
   signed   <- signOAuth oaApp cred reqTime
   response <- httpLbs signed manager
   return $ responseBody response
+
+getRequest :: ResourceName -> Credentials -> Manager -> IO ByteString
+getRequest = makeRequest "GET"
  
 -- Fetch the institutions supported by Intuit
 getInstitutions :: Credentials -> Manager -> IO ByteString
@@ -165,7 +172,7 @@ data UserAccountInfo = UAI { username     :: String
 -- Construct the login XML, necessary to discover a user's accounts.
 getAccountCredentialsXml :: UserAccountInfo -> ByteString
 getAccountCredentialsXml (UAI username password (InstDet _ usernameKey passwordKey)) =
-  [qc|<InstitutionLogin xmlns="http://schema.intuit.com/platform/fdatafeed/institutionlogin/v1"><credentials><credential><name>{usernameKey}</name><value>{username}</value></credential><credential><name>{passwordKey}</name><value>password</value></credential></credentials></InstitutionLogin>|]
+  [qc|<InstitutionLogin xmlns="http://schema.intuit.com/platform/fdatafeed/institutionlogin/v1"><credentials><credential><name>{usernameKey}</name><value>{username}</value></credential><credential><name>{passwordKey}</name><value>{password}</value></credential></credentials></InstitutionLogin>|]
 
 -- For a given user lookup their accounts stored at the desired institution.
 discoverAndAddAccounts :: Credentials -> Manager -> UserAccountInfo -> IO ByteString
@@ -176,6 +183,21 @@ discoverAndAddAccounts credentials manager uai = do
       fullUrl       = baseUrl ++ "/institutions/" ++ iid ++ "/logins"
   request <- parseUrl fullUrl
   let reqTime = request { method = "POST"
+                        , responseTimeout = Just maxTimeOut
+                        , requestBody  = RequestBodyLBS $ bodyString
+                        }
+  signed   <- signOAuth oaApp cred reqTime
+  response <- httpLbs signed manager
+  return $ responseBody response
+
+updateInstitutionLogin :: Credentials -> Manager -> UserAccountInfo -> IO ByteString
+updateInstitutionLogin credentials manager uai = do
+  let (cred, oaApp) = setupOauth credentials
+      bodyString    = getAccountCredentialsXml uai
+      --iid           = instId $ institution uai
+      fullUrl       = baseUrl ++ "/logins/" ++ "708260190" ++ "?refresh=true"
+  request <- parseUrl fullUrl
+  let reqTime = request { method = "PUT"
                         , responseTimeout = Just maxTimeOut
                         , requestBody  = RequestBodyLBS $ bodyString
                         }
@@ -194,3 +216,9 @@ getAccountTransactions accountId startDate = getRequest resourceName
         resourceName  = "/accounts/" ++ accountId ++ 
                           "/transactions?txnStartDate=" ++ startDateStr
 
+getCustomerAccounts :: Credentials -> Manager -> IO ByteString
+getCustomerAccounts = getRequest "/accounts/" 
+
+
+deleteCustomer :: Credentials -> Manager -> IO ByteString
+deleteCustomer = makeRequest "DELETE" "/customers"

@@ -15,12 +15,13 @@ module IntuitParse (
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Char (toLower)
-import Data.Maybe (fromJust)
+import Data.Maybe (isJust, fromJust)
 import Data.List (isInfixOf)
 
 import Data.Time (parseTime, UTCTime)
 import System.Locale (defaultTimeLocale)
 import Text.Printf (printf)
+import Text.Regex as Tr
 import Text.XML.Light.Input (parseXMLDoc)
 import Text.XML.Light.Output (ppTopElement)
 import Text.XML.Light.Lexer (XmlSource)
@@ -120,29 +121,29 @@ toInstitutionDetails xml = do
   case instituteId of
     Left m    -> return $ Left m
     Right iid ->
-      let eitherKeys = figureOutNameAndPasswordFromKeys userKeys
+      let eitherKeys = nameAndPassword userKeys
       in case eitherKeys of
         Left m -> return $ Left m
         Right (passwordKey, usernameKey) ->
           return $ Right $ InstDet iid usernameKey passwordKey
 
-figureOutNameAndPasswordFromKeys :: [(String,String)] -> Either String (PasswordKey,UsernameKey)
-figureOutNameAndPasswordFromKeys keyPairList = loweredKeys lowered
-  where lower    = map toLower
-        lowered  = map (\(x,y) -> (lower x, lower y)) keyPairList
+nameAndPassword :: [(String,String)] -> Either String (PasswordKey,UsernameKey)
+nameAndPassword ((k1,k1Desc):(k2,k2Desc):[])
+          | hasPassword k1 || hasPassword k1Desc = Right (k1,k2)
+          | hasPassword k2 || hasPassword k2Desc = Right (k2,k1)
+          | otherwise                            = 
+              Left $ printf "Can't find a password amongst key %s (%s) or %s (%s)"
+                      k1 k1Desc k2 k2Desc
+nameAndPassword [(k1,k1Desc)] = Left $ printf "Only one key %s (%s)" k1 k1Desc
+nameAndPassword []            = Left "Empty key list"
+nameAndPassword lst           = Left $ printf "key list has %d (> 2) elements" 
+                                              $ length lst
 
-loweredKeys :: [(String,String)] -> Either String (String,String)
-loweredKeys ((k1,k1Desc):(k2,k2Desc):[])
-        | hasPassword k1 || hasPassword k1Desc = Right (k1,k2)
-        | hasPassword k2 || hasPassword k2Desc = Right (k2,k1)
-        | otherwise                            = 
-            Left $ printf "Can't find a password amongst key %s (%s) or %s (%s)"
-                    k1 k1Desc k2 k2Desc
-  where hasPassword = isInfixOf "password"
-loweredKeys [(k1,k1Desc)] = Left $ printf "Only one key %s (%s)" k1 k1Desc
-loweredKeys []            = Left "Empty key list"
-loweredKeys lst           = Left $ printf "key list has %d (> 2) elements" $ length lst
+hasPassword :: String -> Bool
+hasPassword = isJust . Tr.matchRegex passwordRegex 
 
+passwordRegex :: Tr.Regex
+passwordRegex = Tr.mkRegexWithOpts "password" True False -- last turns on case insensitive
 
 data AccountInfo = AI { intuitId   :: String   -- I think it's actually a long 
                       , lastNumber :: String   -- last 4 digits
