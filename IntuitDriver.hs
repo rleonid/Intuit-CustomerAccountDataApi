@@ -3,6 +3,8 @@ module IntuitDriver (
   , Connection
   , IntuitDriver.init             -- because there's a name conflict with Prelude.init
   , UserAccountInfo(..)
+  , AccountType(..)
+  , creditFirstOrd
   , AccountInfo(..)
   , getAccounts
   , Transaction(..)
@@ -16,10 +18,14 @@ module IntuitDriver (
 import Data.ByteString.Lazy.Char8 (ByteString, pack, unpack)
 import Data.Maybe (fromJust)
 import Data.Time (UTCTime)
-import IntuitParse ( AccountInfo(..) , Transaction(..), AccountDetails(..)
+import IntuitParse ( AccountType(..)
+                   , AccountInfo(..)
+                   , Transaction(..)
+                   , AccountDetails(..)
                    , accountDetails
                    , accountNameAndNumbers
                    , accountTransactions
+                   , creditFirstOrd
                    , toInstitutionDetails
                    , xmlFromString)
 import IntuitRest ( IntuitClient(..), AccessTokens, Credentials

@@ -5,6 +5,8 @@ module IntuitParse (
   , justInstitutions
   , institutionNameContains
   , toInstitutionDetails
+  , AccountType(..)
+  , creditFirstOrd
   , AccountInfo(..)
   , accountNameAndNumbers
   , AccountDetails(..)
@@ -149,6 +151,15 @@ data AccountType = Other          -- generally start out this form until classif
                  | Banking
                  | Credit
                  deriving (Eq, Ord, Read, Show)
+
+creditFirstOrd :: AccountType -> AccountType -> Ordering
+creditFirstOrd Credit  Credit  = EQ
+creditFirstOrd Credit  _       = LT
+creditFirstOrd Other   Credit  = GT
+creditFirstOrd Other   Other   = EQ
+creditFirstOrd Other   _       = LT
+creditFirstOrd Banking Banking = EQ
+creditFirstOrd Banking _       = GT
 
 data AccountInfo = AI { intuitId   :: String        -- I think it's actually a long
                       , lastNumber :: String        -- last 4 digits
