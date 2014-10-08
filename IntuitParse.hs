@@ -145,9 +145,15 @@ hasPassword = isJust . Tr.matchRegex passwordRegex
 passwordRegex :: Tr.Regex
 passwordRegex = Tr.mkRegexWithOpts "password" True False -- last turns on case insensitive
 
-data AccountInfo = AI { intuitId   :: String   -- I think it's actually a long
-                      , lastNumber :: String   -- last 4 digits
-                      , name       :: String   -- labaled as NickName
+data AccountType = Other          -- generally start out this form until classified
+                 | Banking
+                 | Credit
+                 deriving (Eq, Ord, Read, Show)
+
+data AccountInfo = AI { intuitId   :: String        -- I think it's actually a long
+                      , lastNumber :: String        -- last 4 digits
+                      , name       :: String        -- labaled as NickName
+                      , acctType   :: AccountType
                       }
                    deriving (Eq, Ord, Read, Show)
 
@@ -156,12 +162,18 @@ accountNameAndNumbers xml =
   do runX $
       xml
       >>> selectAccounts
-      >>> selectId &&& (selectNumber &&& selectNickName)
-      >>> arr (\(iid, (num, nam)) -> AI iid num nam)
-  where selectAccounts = deep (isElem >>> hasName "ns7:OtherAccount")
+      >>> getName &&& (selectId &&& (selectNumber &&& selectNickName))
+      >>> arr (\(t, (iid, (num, nam))) -> AI iid num nam $ toType t)
+  where selectAccounts = deep (isElem >>> (hasName "ns7:OtherAccount" <+>
+                                           hasName "ns3:CreditAccount" <+>
+                                           hasName "ns2:BankingAccount" ))
         selectId       = getChildren >>> hasName "accountId" >>> getChildText
         selectNumber   = getChildren >>> hasName "accountNumber" >>> getChildText
         selectNickName = getChildren >>> hasName "accountNickname" >>> getChildText
+        toType "ns7:OtherAccount"   = Other
+        toType "ns3:CreditAccount"  = Credit
+        toType "ns2:BankingAccount" = Banking
+        toType s                    = undefined $ "Odd XML account filter: " ++ s
 
 data AccountDetails = AD { currentBalance :: Double
                          , paymentDueDate :: UTCTime

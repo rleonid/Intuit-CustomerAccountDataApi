@@ -53,7 +53,6 @@ init ic client = do
 getAccounts :: Connection -> UserAccountInfo String -> IO [AccountInfo]
 getAccounts (C ma cre) (UserAccountInfo user pass iid) = do
   detailBs <- getInstitutionDetails iid cre ma
-  --print detailBs
   detailsR <- toInstitutionDetails $ xmlFromString $ unpack detailBs
   let Right details = detailsR              -- TODO
       userAi  = UserAccountInfo user pass details
