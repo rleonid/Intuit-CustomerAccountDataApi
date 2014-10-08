@@ -1,27 +1,38 @@
 module IntuitDriver (
-  IntuitClient(..)
+    IntuitClient(..)
   , Connection
+  , IntuitDriver.init             -- because there's a name conflict with Prelude.init
+  , UserAccountInfo(..)
   , AccountInfo(..)
-  , IntuitDriver.init
   , getAccounts
+  , Transaction(..)
+  , getTransactions
+  , AccountDetails(..)
+  , getTransactionsAndDetails
   , readIntuitClient
   , getExistingAccounts
   ) where
 
-import Data.Maybe (fromJust)
 import Data.ByteString.Lazy.Char8 (ByteString, pack, unpack)
-import IntuitParse (AccountInfo(..), toInstitutionDetails
+import Data.Maybe (fromJust)
+import Data.Time (UTCTime)
+import IntuitParse ( AccountInfo(..) , Transaction(..), AccountDetails(..)
+                   , accountDetails
                    , accountNameAndNumbers
+                   , accountTransactions
+                   , toInstitutionDetails
                    , xmlFromString)
-import IntuitRest (IntuitClient(..), AccessTokens, Credentials
+import IntuitRest ( IntuitClient(..), AccessTokens, Credentials
                   , UserAccountInfo(..)
+                  , deleteCustomer
                   , discoverAndAddAccounts
+                  , getAccount
+                  , getAccountTransactions
+                  , getCustomerAccounts
                   , getInstitutionDetails
                   , readIntuitClient
-                  , userAccessTokens
                   , updateInstitutionLogin
-                  , getCustomerAccounts
-                  , deleteCustomer
+                  , userAccessTokens
                   )
 import Network.HTTP.Conduit (Manager, newManager, conduitManagerSettings)
 
@@ -48,6 +59,20 @@ getAccounts (C ma cre) (UserAccountInfo user pass iid) = do
       userAi  = UserAccountInfo user pass details
   accountBs <- discoverAndAddAccounts cre ma userAi
   accountNameAndNumbers $ xmlFromString $ unpack accountBs
+
+getTransactions :: Connection -> String -> UTCTime -> IO [Transaction]
+getTransactions (C ma cre) accountId since = do
+  transactionBs <- getAccountTransactions accountId since cre ma
+  accountTransactions $ xmlFromString $ unpack transactionBs
+
+getTransactionsAndDetails :: Connection -> String -> UTCTime -> 
+                              IO ([Transaction], AccountDetails)
+getTransactionsAndDetails (C ma cre) accountId since = do
+  transactionBs <- getAccountTransactions accountId since cre ma
+  transactions <- accountTransactions $ xmlFromString $ unpack transactionBs
+  accountBs <- getAccount accountId cre ma
+  accounts <- accountDetails $ xmlFromString $ unpack accountBs
+  return (transactions, head accounts)
 
 -------------------
 -- Etc methods

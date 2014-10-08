@@ -3,10 +3,10 @@ module IntuitParse (
   , xmlFromFile
   , xmlFromString
   , justInstitutions
-  , institutionNameContains 
-  , toInstitutionDetails 
+  , institutionNameContains
+  , toInstitutionDetails
   , AccountInfo(..)
-  , accountNameAndNumbers 
+  , accountNameAndNumbers
   , AccountDetails(..)
   , accountDetails
   , Transaction(..)
@@ -57,13 +57,13 @@ getChildText = getChildren >>> getText
 type LoadedXml = IOStateArrow () XmlTree XmlTree
 
 xmlFromFile :: FilePath -> LoadedXml
-xmlFromFile = readDocument [] 
+xmlFromFile = readDocument []
 
 xmlFromString :: String -> LoadedXml
-xmlFromString = readString [] 
+xmlFromString = readString []
 
 justInstitutions :: LoadedXml -> IO [(String,String)]
-justInstitutions xml = 
+justInstitutions xml =
   do runX (
       xml
       >>> selectInstitutions
@@ -83,7 +83,7 @@ institutionNameContains xml str =
       >>> selectInstitutions
       >>> (ifA nameMatches selectIdAndName none))
   where selectInstitutions = deep (isElem >>> hasName "institution")
-        nameMatches        = deep (isElem 
+        nameMatches        = deep (isElem
                                     >>> hasName "institutionName"
                                     >>> getChildren
                                     >>> hasText (isInfixOf str))
@@ -105,7 +105,7 @@ userKeysFromIDets :: LoadedXml -> IO [(String,String)]
 userKeysFromIDets xml =
   do runX $
       xml
-      >>> selectKeys 
+      >>> selectKeys
       >>> ifA keyDisplay this none
       >>> selectName &&& selectDesc
   where selectKeys  = deep (isElem >>> hasName "key")
@@ -131,21 +131,21 @@ nameAndPassword :: [(String,String)] -> Either String (PasswordKey,UsernameKey)
 nameAndPassword ((k1,k1Desc):(k2,k2Desc):[])
           | hasPassword k1 || hasPassword k1Desc = Right (k1,k2)
           | hasPassword k2 || hasPassword k2Desc = Right (k2,k1)
-          | otherwise                            = 
+          | otherwise                            =
               Left $ printf "Can't find a password amongst key %s (%s) or %s (%s)"
                       k1 k1Desc k2 k2Desc
 nameAndPassword [(k1,k1Desc)] = Left $ printf "Only one key %s (%s)" k1 k1Desc
 nameAndPassword []            = Left "Empty key list"
-nameAndPassword lst           = Left $ printf "key list has %d (> 2) elements" 
+nameAndPassword lst           = Left $ printf "key list has %d (> 2) elements"
                                               $ length lst
 
 hasPassword :: String -> Bool
-hasPassword = isJust . Tr.matchRegex passwordRegex 
+hasPassword = isJust . Tr.matchRegex passwordRegex
 
 passwordRegex :: Tr.Regex
 passwordRegex = Tr.mkRegexWithOpts "password" True False -- last turns on case insensitive
 
-data AccountInfo = AI { intuitId   :: String   -- I think it's actually a long 
+data AccountInfo = AI { intuitId   :: String   -- I think it's actually a long
                       , lastNumber :: String   -- last 4 digits
                       , name       :: String   -- labaled as NickName
                       }
@@ -185,7 +185,7 @@ accountDetails xml =
         selectDueDate = getChildren >>> hasName "ns3:paymentDueDate" >>> getChildText
         selectEndDate = getChildren >>> hasName "ns3:statementEndDate" >>> getChildText
 
-data Transaction = T { payeeName  :: String 
+data Transaction = T { payeeName  :: String
                      , postedDate :: UTCTime
                      , amount     :: Double
                      }
@@ -194,7 +194,7 @@ data Transaction = T { payeeName  :: String
 accountTransactions :: LoadedXml -> IO [Transaction]
 accountTransactions xml =
   do runX $
-      xml 
+      xml
       >>> selectTransactions
       >>> selectPayeeName &&& (selectPostedDate &&& selectAmount)
       >>> arr (\(p, (d, a)) -> T p (parseUTCT d) (read a))
