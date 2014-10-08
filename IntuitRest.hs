@@ -133,7 +133,7 @@ maxTimeOut = 120 * (10^(6 :: Integer))     -- Haskell default casting
 type ResourceName = String
 
 makeRequest :: String -> ResourceName -> Credentials -> Manager -> IO ByteString
-makeRequest methodStr resourceName credentials manager = do 
+makeRequest methodStr resourceName credentials manager = do
   request <- parseUrl $ baseUrl ++ resourceName
   let reqTime = request { method = B.pack methodStr
                         , responseTimeout = Just maxTimeOut }
@@ -144,7 +144,7 @@ makeRequest methodStr resourceName credentials manager = do
 
 getRequest :: ResourceName -> Credentials -> Manager -> IO ByteString
 getRequest = makeRequest "GET"
- 
+
 -- Fetch the institutions supported by Intuit
 getInstitutions :: Credentials -> Manager -> IO ByteString
 getInstitutions = getRequest "/institutions"
@@ -163,19 +163,20 @@ data InstitutionDetails = InstDet { instId      :: String
                                   }
                           deriving (Eq, Ord, Read, Show)
 
-data UserAccountInfo = UAI { username     :: String
-                           , password     :: String
-                           , institution  :: InstitutionDetails
-                           }
-                       deriving (Eq, Ord, Read, Show)
+data UserAccountInfo a = UserAccountInfo { username     :: String
+                                         , password     :: String
+                                         , institution  :: a
+                                         }
+                         deriving (Eq, Ord, Read, Show)
 
 -- Construct the login XML, necessary to discover a user's accounts.
-getAccountCredentialsXml :: UserAccountInfo -> ByteString
-getAccountCredentialsXml (UAI username password (InstDet _ usernameKey passwordKey)) =
+getAccountCredentialsXml :: UserAccountInfo InstitutionDetails -> ByteString
+getAccountCredentialsXml (UserAccountInfo username password (InstDet _ usernameKey passwordKey)) =
   [qc|<InstitutionLogin xmlns="http://schema.intuit.com/platform/fdatafeed/institutionlogin/v1"><credentials><credential><name>{usernameKey}</name><value>{username}</value></credential><credential><name>{passwordKey}</name><value>{password}</value></credential></credentials></InstitutionLogin>|]
 
 -- For a given user lookup their accounts stored at the desired institution.
-discoverAndAddAccounts :: Credentials -> Manager -> UserAccountInfo -> IO ByteString
+discoverAndAddAccounts :: Credentials -> Manager ->
+                            UserAccountInfo InstitutionDetails -> IO ByteString
 discoverAndAddAccounts credentials manager uai = do
   let (cred, oaApp) = setupOauth credentials
       bodyString    = getAccountCredentialsXml uai
@@ -190,7 +191,8 @@ discoverAndAddAccounts credentials manager uai = do
   response <- httpLbs signed manager
   return $ responseBody response
 
-updateInstitutionLogin :: Credentials -> Manager -> UserAccountInfo -> IO ByteString
+updateInstitutionLogin :: Credentials -> Manager ->
+                            UserAccountInfo InstitutionDetails -> IO ByteString
 updateInstitutionLogin credentials manager uai = do
   let (cred, oaApp) = setupOauth credentials
       bodyString    = getAccountCredentialsXml uai
@@ -213,11 +215,11 @@ getAccount accountId = getRequest ("/accounts/" ++ accountId)
 getAccountTransactions :: String -> UTCTime -> Credentials -> Manager -> IO ByteString
 getAccountTransactions accountId startDate = getRequest resourceName
   where startDateStr  = formatTime defaultTimeLocale "%F" startDate
-        resourceName  = "/accounts/" ++ accountId ++ 
+        resourceName  = "/accounts/" ++ accountId ++
                           "/transactions?txnStartDate=" ++ startDateStr
 
 getCustomerAccounts :: Credentials -> Manager -> IO ByteString
-getCustomerAccounts = getRequest "/accounts/" 
+getCustomerAccounts = getRequest "/accounts/"
 
 
 deleteCustomer :: Credentials -> Manager -> IO ByteString
