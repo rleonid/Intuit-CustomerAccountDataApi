@@ -71,13 +71,13 @@ getTransactions (C ma cre) accountId since = do
   accountTransactions $ xmlFromString $ unpack transactionBs
 
 getTransactionsAndDetails :: Connection -> String -> UTCTime -> 
-                              IO ([Transaction], AccountDetails)
+                              IO ([Transaction], [AccountDetails])
 getTransactionsAndDetails (C ma cre) accountId since = do
   transactionBs <- getAccountTransactions accountId since cre ma
   transactions <- accountTransactions $ xmlFromString $ unpack transactionBs
   accountBs <- getAccount accountId cre ma
   accounts <- accountDetails $ xmlFromString $ unpack accountBs
-  return (transactions, head accounts)
+  return (transactions, accounts)
 
 -------------------
 -- Etc methods

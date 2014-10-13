@@ -205,6 +205,7 @@ accountDetails xml =
       >>> arr (\(b, (d, e)) -> AD (read b) (parseUTCT d) (parseUTCT e))
   where selectAccount = deep (isElem >>> hasName "ns3:CreditAccount")
         selectCurBal  = getChildren >>> hasName "ns3:currentBalance" >>> getChildText
+        -- TODO: Sometimes these things are missing from the account details
         selectDueDate = getChildren >>> hasName "ns3:paymentDueDate" >>> getChildText
         selectEndDate = getChildren >>> hasName "ns3:statementEndDate" >>> getChildText
 
